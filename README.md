@@ -114,4 +114,4 @@ For further details on declarative configs in Kong reference [this](https://docs
 [AntonyGor](https://github.com/AntonyGor)
 [jeremyjpj0916](https://github.com/jeremyjpj0916)
 
-Feel free topen issues, or refer to the [Contribution Gidelines](./CONTRIBUTING.md) if you have any questions. 
+Feel free to open issues, or refer to the [Contribution Gidelines](./CONTRIBUTING.md) if you have any questions. 
