@@ -1,9 +1,13 @@
-<Insert Project Name Here>
+Kong-Plugin-Icap
 Copyright 2021 Optum
 
 Project Description:
 ====================
-<Short description of your project>
+This project provides the basic framework of a kong plugin that enables virus scanning functionality leveraging the ICAP protocol. 
+Sitting in the access phase of an API Gateway, the plugin will read file attachment data on a given payload, and send it via a TCP 
+socket connection to a third party server (an ICAP server) to conduct the resource-heavy virus scanning. An ICAP response will be 
+returned to the plugin, where logic will run to drop the request or allow it passage, depending on the results of the scan. 
 
 Author(s):
-<List the names and GitHub IDs of the original project authors>
+Antony Gor, GitHub ID: 12478123
+
