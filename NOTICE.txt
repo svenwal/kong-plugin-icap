@@ -9,5 +9,5 @@ socket connection to a third party server (an ICAP server) to conduct the resour
 returned to the plugin where logic will run to drop the request or allow it passage, depending on the results of the scan. 
 
 Author(s):
-Antony Gor, GitHub ID: 12478123
+Antony Gor, GitHub ID: AntonyGor
 
