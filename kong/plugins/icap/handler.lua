@@ -9,10 +9,11 @@ local s_sub = string.sub
 local t_rem = table.remove
 local t_ins = table.insert
 
-local KongICAPHandler = {}
+local KongICAPHandler = {
+    PRIORITY = 2001,
+    VERSION = "0.2"
+}
 
-KongICAPHandler.Priority = 2001
-KongICAPHandler.Version = "0.1"
 
 local ICAP_RESPONSES = {
     [200] = "OK",
@@ -37,8 +38,9 @@ local function contentAllowed(conf)
 
     local contentType = kong.request.get_header("Content-Type")
     if not contentType then 
-        kong.response.exit(400, "Bad Request")
+        kong.response.exit(400, "Bad Request content type")
     end
+    kong.log.debug("Content-Type: " .. contentType)
 end
 -- Checks content type returning true and the content-type if whitelisted. Note, if content type is multipart/form-data 
 -- or x-www-form-urlencoded all attached media types will be scanned without checking against the whitelist.
@@ -47,7 +49,7 @@ local function contentAllowed(conf)
 
     local contentType = kong.request.get_header("Content-Type")
     if not contentType then 
-        kong.response.exit(400, "Bad Request")
+        kong.response.exit(400, "Bad Request no content-type")
     end
 
     if s_find(contentType, "multipart/form-data", nil, true) or s_find(contentType, "application/x-www-form-urlencoded", nil, true) then
@@ -67,14 +69,14 @@ local function getPayloadData(conf, contentType)
     if s_find(contentType, "multipart/form-data", nil, true) or s_find(contentType, "application/x-www-form-urlencoded", nil, true) then
         local body, err, mimetype = kong.request.get_body()
         if not body then 
-            kong.response.exit(400, "Bad Request")
+            kong.response.exit(400, "Bad Request no body")
         end
 
         return body, mimetype 
     else
-        local rawBody = kong.request.get_raw_body()
+        local rawBody, err = kong.request.get_raw_body()
         if not rawBody then 
-            kong.response.exit(400, "Bad Request")
+            kong.response.exit(400, "Bad Request no raw body - error " .. err)
         end
 
         return rawBody, contentType
@@ -111,6 +113,8 @@ local function icapProtocol(conf, body)
     local body_length = s_len(body)
     local body_hex = s_fmt("%02x", body_length) 
 
+    kong.log.debug("icapProtocal config set")
+
     local icapReq = {
         [1] = "REQMOD " .. service .. " ICAP/1.0\r\n",
         [2] = "Host: " .. icapHost .. "\r\n", 
@@ -138,6 +142,9 @@ local function sendReceiveICAP(conf, icapReq)
     local icapPort = conf.icap_port 
     local timeout = conf.timeout 
     local keepalive = conf.keepalive
+    kong.log.debug("sendReceiveICAP")
+    kong.log.debug("Host: " .. icapHost)
+    kong.log.debug("Port: " .. icapPort)
 
     local sock = ngx.socket.tcp()
     sock:settimeout(timeout)
@@ -159,6 +166,7 @@ local function sendReceiveICAP(conf, icapReq)
         local ok, err = sock:send(v)
         if not ok then 
             kong.log.err("failed to send: " .. v) 
+	    kong.log.debug(err)
         end
     end
 
@@ -177,14 +185,17 @@ local function sendReceiveICAP(conf, icapReq)
 end
 -- Handle response from the ICAP server
 local function handleResp(resp, host)
+    kong.log.debug("handleResp started")
     if resp ~= nil then 
         local codeStr = s_sub(resp, 10, 12) 
         local codeNum = tonumber(codeStr)
 
+	kong.log.debug("ICAP response: " .. resp)
+
         if codeNum ~= 204 then 
             local msg = "ICAP " .. codeStr .. " " .. ICAP_RESPONSES[codeNum] .. " " .. host
             kong.ctx.shared.errmsg = msg 
-            return kong.response.exit(400, "Bad Request")
+            return kong.response.exit(400, msg)
         else 
             -- Status code 204 indicates no thread detected, do nothing and allow through the gateway
             return
@@ -198,10 +209,13 @@ end
 
 function KongICAPHandler:access(conf)
     local allowed, cType = contentAllowed(conf)
+    kong.log.debug("Start ICAP")
 
     if allowed == true then 
         local body, mimetype = getPayloadData(conf, cType)
+	kong.log.debug("Parse body")
         if type(body) == "table" then
+	    kong.log.debug("type is table")
             for k,v in pairs(body) do 
                 local icapReq, host = icapProtocol(conf, v)
                 local resp = sendReceiveICAP(conf, icapReq)
@@ -209,6 +223,7 @@ function KongICAPHandler:access(conf)
                 handleResp(resp, host)
             end
         else 
+	    kong.log.debug("type is not table")
             local icapReq, host = icapProtocol(conf, body)
             local resp = sendReceiveICAP(conf, icapReq)
 
