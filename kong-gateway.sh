@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 docker rm -f kong-gateway-icap
 
 docker run -d --name kong-gateway-icap \
