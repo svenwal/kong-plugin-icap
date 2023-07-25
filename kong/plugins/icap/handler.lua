@@ -74,9 +74,14 @@ local function getPayloadData(conf, contentType)
 
         return body, mimetype 
     else
+        kong.log.debug("kong.request.get_raw_body")
         local rawBody, err = kong.request.get_raw_body()
+        
         if not rawBody then 
+            kong.log.err("err: " .. err)
             kong.response.exit(400, "Bad Request no raw body - error " .. err)
+        else
+            kong.log.debug("getPayloadData: no error")
         end
 
         return rawBody, contentType
@@ -171,6 +176,11 @@ local function sendReceiveICAP(conf, icapReq)
     end
 
     local resp, err = sock:receiveany(10 * 1024)
+    if err then
+        kong.log.err("receiveany - err:", err)
+    else
+        kong.log.notice("receiveany no err")
+    end
     if not resp then 
         kong.response.exit(500, "Internal Server Error")
     end
