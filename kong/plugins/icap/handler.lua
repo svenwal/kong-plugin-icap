@@ -169,6 +169,11 @@ local function sendReceiveICAP(conf, icapReq)
 
     for k, v in pairs(icapReq) do 
         local ok, err = sock:send(v)
+        if err then
+            kong.log.err("sock:send - err: ", err)
+        else
+            kong.log.notice("sock:send no err")
+        end
         if not ok then 
             kong.log.err("failed to send: " .. v) 
 	    kong.log.debug(err)
@@ -177,7 +182,7 @@ local function sendReceiveICAP(conf, icapReq)
 
     local resp, err = sock:receiveany(10 * 1024)
     if err then
-        kong.log.err("receiveany - err:", err)
+        kong.log.err("receiveany - err: ", err)
     else
         kong.log.notice("receiveany no err")
     end
