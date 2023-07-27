@@ -11,9 +11,23 @@ local t_ins = table.insert
 
 local KongICAPHandler = {
     PRIORITY = 2001,
-    VERSION = "0.2"
+    VERSION = "0.3"
 }
 
+
+-- Dump a JSON to a String
+function dump(o)
+    if type(o) == 'table' then
+        local s = '{ '
+        for k,v in pairs(o) do
+            if type(k) ~= 'number' then k = '"'..k..'"' end
+            s = s .. '['..k..'] = ' .. dump(v) .. ','
+        end
+        return s .. '} '
+    else
+        return tostring(o)
+    end
+end
 
 local ICAP_RESPONSES = {
     [200] = "OK",
@@ -40,7 +54,7 @@ local function contentAllowed(conf)
     if not contentType then 
         kong.response.exit(400, "Bad Request content type")
     end
-    kong.log.debug("Content-Type: " .. contentType)
+    kong.log.notice("Content-Type: " .. contentType)
 end
 -- Checks content type returning true and the content-type if whitelisted. Note, if content type is multipart/form-data 
 -- or x-www-form-urlencoded all attached media types will be scanned without checking against the whitelist.
@@ -74,14 +88,14 @@ local function getPayloadData(conf, contentType)
 
         return body, mimetype 
     else
-        kong.log.debug("kong.request.get_raw_body")
+        kong.log.notice("kong.request.get_raw_body")
         local rawBody, err = kong.request.get_raw_body()
         
         if not rawBody then 
             kong.log.err("err: " .. err)
             kong.response.exit(400, "Bad Request no raw body - error " .. err)
         else
-            kong.log.debug("getPayloadData: no error")
+            kong.log.notice("getPayloadData: no error")
         end
 
         return rawBody, contentType
@@ -95,10 +109,10 @@ local function addEncaps(icapReq)
     end
     -- Assume that the byte offset of headers is a three digit number, add one
     encaps = encaps + 1
-    local encapsStr = s_fmt(icapReq[3], tostring(encaps))
+    local encapsStr = s_fmt(icapReq[5], tostring(encaps))
 
-    t_rem(icapReq, 3)
-    t_ins(icapReq, 3, encapsStr)
+    t_rem(icapReq, 5)
+    t_ins(icapReq, 5, encapsStr)
 
     return icapReq
 end
@@ -118,25 +132,40 @@ local function icapProtocol(conf, body)
     local body_length = s_len(body)
     local body_hex = s_fmt("%02x", body_length) 
 
-    kong.log.debug("icapProtocal config set")
+    kong.log.notice("icapProtocal config set")
+
+    local userAgent = kong.request.get_header("User-Agent")
+    if not userAgent then
+        userAgent = "Kong"
+    end
+    
+    local contentLength = kong.request.get_header("Content-Length")
+    if not contentLength then
+        contentLength = "0"
+    end
+    
+    -- TO DO: add all other Headers sent by the Consumer to Kong
 
     local icapReq = {
-        [1] = "REQMOD " .. service .. " ICAP/1.0\r\n",
+        [1] = "REQMOD icap://" .. icapHost .. "/" .. service .. " ICAP/1.0\r\n",
         [2] = "Host: " .. icapHost .. "\r\n", 
-        [3] = "Encapsulated: req-hdr=0, req-body=%s\r\n", 
+        [3] = "User-Agent: Kong\r\n",
         [4] = "Allow: 204\r\n", 
-        [5] = "X-Client-IP: " .. icapHost .. "\r\n", 
+        [5] = "Encapsulated: req-hdr=0, req-body=%s\r\n", 
         [6] = "\r\n",
 
         [7] = "POST " .. "http://" .. host .. " HTTP/1.1\r\n",
-        [8] = "\r\n",
+        [8] = "User-Agent: " .. userAgent .. "\r\n",
+        [9] = "Content-Length: " .. contentLength .. "\r\n",
+        [10] = "\r\n",
 
-        [9] = body_hex .. "\r\n",
-        [10] = body,
-        [11] = "\r\n",
-        [12] = "0\r\n",
+        [11] = body_hex .. "\r\n",
+        [12] = body,
+        [13] = "\r\n",
+        [14] = "0\r\n",
+
     }
-
+-- [14] = "0; ieof\r\n\r\n",
     local icapReqMod = addEncaps(icapReq)
 
     return icapReqMod, host
@@ -147,9 +176,9 @@ local function sendReceiveICAP(conf, icapReq)
     local icapPort = conf.icap_port 
     local timeout = conf.timeout 
     local keepalive = conf.keepalive
-    kong.log.debug("sendReceiveICAP")
-    kong.log.debug("Host: " .. icapHost)
-    kong.log.debug("Port: " .. icapPort)
+    kong.log.notice("sendReceiveICAP")
+    kong.log.notice("Host: " .. icapHost)
+    kong.log.notice("Port: " .. icapPort)
 
     local sock = ngx.socket.tcp()
     sock:settimeout(timeout)
@@ -167,86 +196,116 @@ local function sendReceiveICAP(conf, icapReq)
         end
     end
 
-    for k, v in pairs(icapReq) do 
-        local ok, err = sock:send(v)
-        if err then
-            kong.log.err("sock:send - err: ", err)
-        else
-            kong.log.notice("sock:send no err")
-        end
-        if not ok then 
-            kong.log.err("failed to send: " .. v) 
-	    kong.log.debug(err)
-        end
-    end
-
-    local resp, err = sock:receiveany(10 * 1024)
+    local optionsICAP="OPTIONS icap://" .. conf.icap_host .. "/" .. conf.icap_service .. " ICAP/1.0\n" ..
+    "Host: " .. conf.icap_host .. "\n" ..
+    "User-Agent: Kong\n" ..
+    "Encapsulated: null-body=0\n"
+    optionsICAP = optionsICAP .. '\n'
+    
+    -- Send the OPTIONS request
+    kong.log.notice("OPTIONS request: '" .. dump(optionsICAP) .. "'")
+    local bytes, err = sock:send(optionsICAP)
     if err then
-        kong.log.err("receiveany - err: ", err)
+        kong.log.notice("failed to send OPTIONS: ", err)
+        return
+    end
+    -- Receive the OPTIONS request
+    -- local data, err, partial = sock:receive()
+    local data, err = sock:receiveany(10 * 1024)
+    if err then
+        kong.log.notice("failed to receive OPTIONS: ", err)
+        return
+    end
+    kong.log.notice("OPTIONS response is: ", data)
+
+    -- Send the REQMOD request
+    kong.log.notice("REQMOD request: '" .. dump(icapReq) .. "'")
+    local ok, err = sock:send(icapReq)
+    if err then
+        kong.log.err("sock:send REQMOD - err: ", err)
+        return
     else
-        kong.log.notice("receiveany no err")
+        kong.log.notice("sock:send REQMOD no err")
     end
-    if not resp then 
-        kong.response.exit(500, "Internal Server Error")
+    if not ok then 
+        kong.log.err("failed to send REQMOD - err: " .. err) 
+        return
+    end
+    -- Receive the REQMOD request
+    local data, err = sock:receiveany(10 * 1024)
+    --local data, err, partial = sock:receive()
+    if err then
+        kong.log.err("failed to receive REQMOD - err: ", err)
+        return
+    else
+        kong.log.notice("REQMOD no err")
+        kong.log.notice("REQMOD response is: " .. data)
+    end
+    if not data then 
+        return
     end
 
-    local ok, err = sock:setkeepalive() 
-    if not ok then
-      kong.log.err("failed to keepalive to ", icapHost, ":", tostring(icapPort), ": ", err)
-      return nil, err
-    end
-
-    return resp
+    -- CLose the socket
+    sock:close()
+    
+    return data
 end
 -- Handle response from the ICAP server
-local function handleResp(resp, host)
-    kong.log.debug("handleResp started")
+local function handleResp(resp)
+    kong.log.notice("handleResp started")
+    local msg = {}
+    
     if resp ~= nil then 
         local codeStr = s_sub(resp, 10, 12) 
         local codeNum = tonumber(codeStr)
 
-	kong.log.debug("ICAP response: " .. resp)
-
-        if codeNum ~= 204 then 
-            local msg = "ICAP " .. codeStr .. " " .. ICAP_RESPONSES[codeNum] .. " " .. host
-            kong.ctx.shared.errmsg = msg 
+	    if codeNum ~= 204 then 
+            msg.error = "400"
+            msg.message = "ICAP Code:" .. codeStr .. " Message:'" .. ICAP_RESPONSES[codeNum] .. "'"
             return kong.response.exit(400, msg)
         else 
             -- Status code 204 indicates no thread detected, do nothing and allow through the gateway
             return
         end
     else
-        local msg = "ICAP No Response Data " .. host
-        kong.ctx.shared.errmsg = msg 
-        return kong.response.exit(500, "Internal Server Error")
+        msg.error = "500"
+        msg.message = "ICAP No Response Data"
+    return kong.response.exit(500, msg)
     end
 end
 
 function KongICAPHandler:access(conf)
-    local allowed, cType = contentAllowed(conf)
-    kong.log.debug("Start ICAP")
+    kong.log.notice("Start ICAP")
+    local resp
+    local icapReq
+    local host 
+    local msg = {}
 
+    local allowed, cType = contentAllowed(conf)
+    
     if allowed == true then 
         local body, mimetype = getPayloadData(conf, cType)
-	kong.log.debug("Parse body")
+	    kong.log.notice("Parse body")
         if type(body) == "table" then
-	    kong.log.debug("type is table")
+	        kong.log.notice("type is table")
             for k,v in pairs(body) do 
-                local icapReq, host = icapProtocol(conf, v)
-                local resp = sendReceiveICAP(conf, icapReq)
-
-                handleResp(resp, host)
+                icapReq, host = icapProtocol(conf, v)
+                resp = sendReceiveICAP(conf, icapReq)
             end
         else 
-	    kong.log.debug("type is not table")
-            local icapReq, host = icapProtocol(conf, body)
-            local resp = sendReceiveICAP(conf, icapReq)
-
-            handleResp(resp, host)
+	        kong.log.notice("type is not table")
+            icapReq, host = icapProtocol(conf, body)
+            resp = sendReceiveICAP(conf, icapReq)
         end
     else
-        return kong.response.exit(415, "Unsupported Media Type")
+        msg.error = "415"
+        msg.message = "Unsupported Media Type"
+
+        return kong.response.exit(415, msg)
     end
+
+    handleResp(resp, host)
+    
 end
 
 return KongICAPHandler
