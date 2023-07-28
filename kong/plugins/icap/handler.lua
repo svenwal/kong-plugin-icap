@@ -163,10 +163,9 @@ local function icapProtocol(conf, body)
         [11] = body_hex .. "\r\n",
         [12] = body,
         [13] = "\r\n",
-        [14] = "0\r\n",
-
+        [14] = "0; ieof\r\n\r\n",
     }
--- [14] = "0; ieof\r\n\r\n",
+
     local icapReqMod = addEncaps(icapReq)
 
     return icapReqMod, host
