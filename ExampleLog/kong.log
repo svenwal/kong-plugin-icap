@@ -1,0 +1,62 @@
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:279 [icap] Start ICAP, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:91 [icap] kong.request.get_raw_body, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:98 [icap] getPayloadData: no error, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:289 [icap] Parse body, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:297 [icap] type is not table, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:136 [icap] icapProtocal config set, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:180 [icap] sendReceiveICAP, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:181 [icap] Host: 192.168.0.3, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:182 [icap] Port: 1344, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:22 [notice] 2370#0: *594 [kong] handler.lua:207 [icap] OPTIONS request: 'OPTIONS icap://192.168.0.3:1344/SYMCScanReq-AV ICAP/1.0
+Host: 192.168.0.3
+User-Agent: Kong
+Encapsulated: null-body=0
+
+', client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:23 [notice] 2370#0: *594 [kong] handler.lua:220 [icap] OPTIONS response is: ICAP/1.0 200 OK
+Date: Fri Jul 28 11:02:22 2023 GMT
+Methods: REQMOD
+Service: Symantec Protection Engine/8.2.1.6
+Service-ID: SYMCSCANREQ-AV
+ISTag: "62C0B4D4526DB422F0139B6822B98ADF"
+X-Definition-Info: 20230727.019
+Max-Connections: 32
+X-Allow-Out: X-Outer-Container-Is-Mime, X-Infection-Found, X-Definition-Info, X-AV-License
+X-Allow-Out: X-Violations-Found
+X-Allow-Out: X-SYMANTEC-URL-Definition-Info, X-URL-License
+Allow: 204
+Options-TTL: 3600
+Preview: 4
+Transfer-Preview: *
+X-AV-License: 1
+X-URL-License: 1
+, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:23 [notice] 2370#0: *594 [kong] handler.lua:223 [icap] REQMOD request: '{ [1] = REQMOD icap://192.168.0.3:1344/SYMCScanReq-AV ICAP/1.0
+,[2] = Host: 192.168.0.3
+,[3] = User-Agent: Kong
+,[4] = Allow: 204
+,[5] = Encapsulated: req-hdr=0, req-body=150
+,[6] = 
+,[7] = POST http://kong:8000/rest_dummyapi_icap/api/NonCache/DummyPayload HTTP/1.1
+,[8] = User-Agent: insomnia/2023.4.0
+,[9] = Content-Length: 68
+,[10] = 
+,[11] = 44
+,[12] = X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*,[13] = 
+,[14] = 0; ieof
+
+,} ', client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:23 [notice] 2370#0: *594 [kong] handler.lua:229 [icap] sock:send REQMOD no err, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:23 [notice] 2370#0: *594 [kong] handler.lua:242 [icap] REQMOD no err, client: 192.168.0.2, server: kong, request: "POST /rest_dummyapi_icap/api/NonCache/DummyPayload?responsePayloadSizeInBytes=100 HTTP/1.1", host: "kong:8000"
+2023/07/28 11:02:23 [notice] 2370#0: *594 [kong] handler.lua:243 [icap] REQMOD response is: ICAP/1.0 201 Created
+ISTag: "62C0B4D4526DB422F0139B6822B98ADF"
+Date: Fri Jul 28 11:02:23 2023 GMT
+Service: Symantec Protection Engine/8.2.1.6
+Service-ID: SYMCSCANREQ-AV
+X-Violations-Found: 1
+	DummyPayload
+	EICAR Test String
+	11101
+	0
+X-Outer-Container-Is-Mime: 0
+Encapsulated: res-hdr=0, res-body=110
