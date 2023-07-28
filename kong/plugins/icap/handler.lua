@@ -118,6 +118,7 @@ local function addEncaps(icapReq)
 end
 -- Formats request to icap server according to icap protocol
 local function icapProtocol(conf, body) 
+    local icapPort = conf.icap_port 
     local icapHost = conf.icap_host 
     local service = conf.icap_service 
 
@@ -147,7 +148,7 @@ local function icapProtocol(conf, body)
     -- TO DO: add all other Headers sent by the Consumer to Kong
 
     local icapReq = {
-        [1] = "REQMOD icap://" .. icapHost .. "/" .. service .. " ICAP/1.0\r\n",
+        [1] = "REQMOD icap://" .. icapHost .. ":" .. icapPort .. "/" .. service .. " ICAP/1.0\r\n",
         [2] = "Host: " .. icapHost .. "\r\n", 
         [3] = "User-Agent: Kong\r\n",
         [4] = "Allow: 204\r\n", 
@@ -172,6 +173,7 @@ local function icapProtocol(conf, body)
 end
 -- Sends formatted icap request to icap server to be scanned and awaits response
 local function sendReceiveICAP(conf, icapReq) 
+    local icapPort = conf.icap_port 
     local icapHost = conf.icap_host 
     local icapPort = conf.icap_port 
     local timeout = conf.timeout 
@@ -196,7 +198,7 @@ local function sendReceiveICAP(conf, icapReq)
         end
     end
 
-    local optionsICAP="OPTIONS icap://" .. conf.icap_host .. "/" .. conf.icap_service .. " ICAP/1.0\n" ..
+    local optionsICAP="OPTIONS icap://" .. conf.icap_host .. ":" .. icapPort .. "/" .. conf.icap_service .. " ICAP/1.0\n" ..
     "Host: " .. conf.icap_host .. "\n" ..
     "User-Agent: Kong\n" ..
     "Encapsulated: null-body=0\n"
